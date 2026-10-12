@@ -145,8 +145,8 @@ public struct Qwen3TTSTalkerConfig: Codable, Sendable {
     var codecPadId: Int
     var codecBosId: Int
     var codecLanguageId: [String: Int]?
-    var spkId: [String: [Int]]?
-    var spkIsDialect: [String: String]?
+    var spkId: [String: Int]?
+    var spkIsDialect: [String: Bool]?
 
     enum CodingKeys: String, CodingKey {
         case codePredictorConfig = "code_predictor_config"
@@ -209,8 +209,14 @@ public struct Qwen3TTSTalkerConfig: Codable, Sendable {
         codecPadId = try c.decodeIfPresent(Int.self, forKey: .codecPadId) ?? 2148
         codecBosId = try c.decodeIfPresent(Int.self, forKey: .codecBosId) ?? 2149
         codecLanguageId = try c.decodeIfPresent([String: Int].self, forKey: .codecLanguageId)
-        spkId = try c.decodeIfPresent([String: [Int]].self, forKey: .spkId)
-        spkIsDialect = try c.decodeIfPresent([String: String].self, forKey: .spkIsDialect)
+        // `spk_id` maps speaker name -> token id (`[String: Int]`) in CustomVoice
+        // checkpoints; VoiceDesign ships an empty object. Decode defensively so an
+        // unexpected shape can't abort model loading (the field is currently unused).
+        spkId = (try? c.decodeIfPresent([String: Int].self, forKey: .spkId)) ?? nil
+        // `spk_is_dialect` mixes Bool and String values across speakers (e.g. `false`
+        // vs `"sichuan_dialect"`), so no single dictionary type decodes it. It is
+        // unused, so attempt a Bool decode and otherwise fall back to nil.
+        spkIsDialect = (try? c.decodeIfPresent([String: Bool].self, forKey: .spkIsDialect)) ?? nil
     }
 
     var mropeSection: [Int]? {
